@@ -1,0 +1,3 @@
+relMixApp <- function(){
+  shiny::runApp()
+}

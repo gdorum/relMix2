@@ -1,58 +1,27 @@
 library(DT)
 
-ui_upload_mixture <- sidebarLayout(
-  sidebarPanel(
-    fileInput("mixture", "Upload a mixture file",accept = c(".csv", ".tsv",".txt")),
-    textInput("delim", "Delimiter (leave blank to guess)", ""),
-    numericInput("skip", "Rows to skip", 0, min = 0),
-    numericInput("rows", "Rows to preview", 10, min = 1)
-  ),
-  mainPanel(
-    h3("Mixture profile"),
-    tableOutput("preview1")
+# Example data
+ui_exData <- fluidPage(
+  titlePanel(""),
+  sidebarLayout(
+    sidebarPanel(
+      actionButton("load_btn", "Load Example Data")
+    ),
+    mainPanel(
+      #tableOutput("mixEx")
+    )
   )
 )
 
-ui_upload_reference <- sidebarLayout(
-  sidebarPanel(
-    fileInput("reference", "Upload a reference file",accept = c(".csv", ".tsv",".txt")),
-    textInput("delim2", "Delimiter (leave blank to guess)", ""),
-    numericInput("skip2", "Rows to skip", 0, min = 0),
-    numericInput("rows2", "Rows to preview", 10, min = 1)
-  ),
-  mainPanel(
-    h3("Reference profiles"),
-    DT::DTOutput("preview2")
-  )
-)
 
-ui_upload_database <- sidebarLayout(
-  sidebarPanel(
-    fileInput("database", "Upload a database file",accept = c(".csv", ".tsv",".txt")),
-    textInput("delim3", "Delimiter (leave blank to guess)", ""),
-    numericInput("skip3", "Rows to skip", 0, min = 0),
-    numericInput("rows3", "Rows to preview", 10, min = 1)
-  ),
-  mainPanel(
-    h3("Database"),
-    tableOutput("preview3")
-  )
-)
+#Load own data
+ui_upload_mixture <- ui_upload("mixture")
+ui_upload_reference <- ui_upload("reference")
+ui_upload_database <- ui_upload("database")
+
+
 
 ui_database <-
-  # fluidRow(
-  # column(4,
-  #  numericInput("theta","Theta",0, min=0, max=1),
-  #  numericInput("silent","Silent allele frequency",0, min=0, max=1),
-  #  numericInput("maf","Minimum allele frequency",0.001, min=0, max=1)
-  # ),
-  # fluidRow(
-  #   column(6,
-  #          numericInput("theta","Theta",0, min=0, max=1),
-  #          numericInput("silent","Silent allele frequency",0, min=0, max=1),
-  #          numericInput("maf","Minimum allele frequency",0.001, min=0, max=1)
-  #   )
-  # )
 
     sidebarLayout(
     sidebarPanel(
@@ -102,6 +71,7 @@ fluidPage(
 
   tabsetPanel(
     tabPanel("Import data",
+    ui_exData,
     ui_upload_mixture,
     ui_upload_reference,
     ui_upload_database
@@ -112,7 +82,7 @@ fluidPage(
     tabPanel("Pedigrees",
              ui_pedigrees
              ),
-    tabPanel("Results")
+    tabPanel("LR calculations")
   )
 )
 

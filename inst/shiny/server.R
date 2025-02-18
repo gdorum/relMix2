@@ -4,14 +4,45 @@
 function(input, output, session) {
 
   # Upload ---------------------------------------------------------
-  raw <- reactive({
+
+    #Example data
+    observeEvent(input$load_btn, {
+      # Load the specific data set
+      mixEx <- read.table(here::here("inst","extdata","mixture.txt"), header = TRUE, sep = "\t")
+      refEx <- read.table(here::here("inst","extdata","references.txt"), header = TRUE, sep = "\t")
+      databaseEx <- read.table(here::here("inst","extdata","frequencies22Markers.txt"), header = TRUE, sep = "\t")
+
+      # Render the data table
+      output$preview_mixture <- DT::renderDT({
+        mix = req(mixEx)
+        datatable(mix, rownames = FALSE,
+                  options = list(scrollY = "300px", paging = FALSE, dom = "t"))
+      })
+      output$preview_reference <- DT::renderDT({
+        refs = req(refEx) |> prettyRef()
+        datatable(refs, rownames = FALSE,
+                  options = list(scrollY = "300px", paging = FALSE, dom = "t"))
+      })
+      output$preview_database <- DT::renderDT({
+        db = req(databaseEx)
+        datatable(db, rownames = FALSE,
+                  options = list(scrollY = "300px", paging = FALSE, dom = "t"))
+      })
+  })
+
+  #Read mixture file
+  raw <- reactive({ print("input$mixture")
     req(input$mixture)
     read.table(input$mixture$datapath, sep = "\t", header=TRUE)
   })
-   output$preview1 <- renderTable({
-     head(raw(), input$rows)
+
+   output$preview_mixture <- DT::renderDT({
+     mix = req(raw())
+     datatable(mix, rownames = FALSE,
+               options = list(scrollY = "300px", paging = FALSE, dom = "t"))
      })
 
+  #Read reference file
    raw2 <- reactive({ print("input$reference")
      req(input$reference)
 
@@ -21,17 +52,22 @@ function(input, output, session) {
      names(df) = c("SampleName", "Marker", "Allele1", "Allele2")
      df
    })
-   output$preview2 <- DT::renderDT({
+
+   output$preview_reference <- DT::renderDT({
      refs = req(raw2()) |> prettyRef()
      datatable(refs, rownames = FALSE,
                options = list(scrollY = "300px", paging = FALSE, dom = "t"))
    })
+
+   #Read database file
    raw3 <- reactive({
      req(input$database)
      read.table(input$database$datapath, sep = "\t", header=TRUE)
    })
-   output$preview3 <- renderTable({
-     head(raw3(), input$rows3)
+   output$preview_database <- DT::renderDT({
+     db = req(raw3())
+     datatable(db, rownames = FALSE,
+               options = list(scrollY = "300px", paging = FALSE, dom = "t"))
    })
 
 

@@ -72,9 +72,10 @@ fluidPage(
   tabsetPanel(
     tabPanel("Import data",
     ui_exData,
+    ui_upload_database,
     ui_upload_mixture,
     ui_upload_reference,
-    ui_upload_database
+    #actionButton("check","Check validity of data",class="btn-block")
     ),
     tabPanel("Set parameters",
              ui_database
@@ -82,7 +83,10 @@ fluidPage(
     tabPanel("Pedigrees",
              ui_pedigrees
              ),
-    tabPanel("LR calculations")
+    tabPanel("LR calculations",
+             actionButton("LRbut","Calculate LR"),
+             DT::DTOutput("LR")
+             )
   )
 )
 

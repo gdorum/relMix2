@@ -1,78 +1,143 @@
 
 
 # Define server logic
-function(input, output, session) {
+server <- function(input, output, session) {
 
-  # Upload ---------------------------------------------------------
+  # Upload tab ---------------------------------------------------------
+
+    datasets <- reactiveValues(mix = NULL, ref = NULL, db = NULL)
 
     #Example data
     observeEvent(input$load_btn, {
       # Load the specific data set
-      mixEx <- read.table(here::here("inst","extdata","mixture.txt"), header = TRUE, sep = "\t")
-      refEx <- read.table(here::here("inst","extdata","references.txt"), header = TRUE, sep = "\t")
-      databaseEx <- read.table(here::here("inst","extdata","frequencies22Markers.txt"), header = TRUE, sep = "\t")
+      datasets$mix <- read.table(here::here("inst","extdata","mixture.txt"), header = TRUE, sep = "\t")
+      datasets$ref <- read.table(here::here("inst","extdata","references.txt"), header = TRUE, sep = "\t")
+      datasets$db <- read.table(here::here("inst","extdata","frequencies22Markers.txt"), header = TRUE, sep = "\t")
 
       # Render the data table
-      output$preview_mixture <- DT::renderDT({
-        mix = req(mixEx)
-        datatable(mix, rownames = FALSE,
-                  options = list(scrollY = "300px", paging = FALSE, dom = "t"))
-      })
-      output$preview_reference <- DT::renderDT({
-        refs = req(refEx) |> prettyRef()
-        datatable(refs, rownames = FALSE,
-                  options = list(scrollY = "300px", paging = FALSE, dom = "t"))
-      })
       output$preview_database <- DT::renderDT({
-        db = req(databaseEx)
+        db = req(datasets$db)
+        #db = unobserved_allele(db)
         datatable(db, rownames = FALSE,
                   options = list(scrollY = "300px", paging = FALSE, dom = "t"))
       })
+      output$preview_mixture <- DT::renderDT({
+        mix = req(datasets$mix)
+        datatable(mix, rownames = FALSE,
+                  options = list(scrollY = "300px", paging = FALSE, dom = "t"))
+      })
+
+
+      output$preview_reference <- DT::renderDT({
+        ref = req(datasets$ref) |> prettyRef()
+        datatable(ref, rownames = FALSE,
+                  options = list(scrollY = "300px", paging = FALSE, dom = "t"))
+      })
   })
+
+
 
   #Read mixture file
-  raw <- reactive({ print("input$mixture")
+  observe({print("input$mixture")
     req(input$mixture)
-    read.table(input$mixture$datapath, sep = "\t", header=TRUE)
+    datasets$mix <- read.table(input$mixture$datapath, sep = "\t", header=TRUE)
+    output$preview_mixture<- DT::renderDT({
+      mix = req(datasets$mix)
+      datatable(mix, rownames = FALSE,
+                options = list(scrollY = "300px", paging = FALSE, dom = "t"))
+    })
   })
 
-   output$preview_mixture <- DT::renderDT({
-     mix = req(raw())
-     datatable(mix, rownames = FALSE,
-               options = list(scrollY = "300px", paging = FALSE, dom = "t"))
-     })
-
   #Read reference file
-   raw2 <- reactive({ print("input$reference")
-     req(input$reference)
+  observe({print("input$reference")
+    req(input$reference)
+    datasets$ref <- read.table(input$reference$datapath, sep = "\t", header=TRUE)
+   if(ncol(datasets$ref) != 4)
+      stop("Reference file must have 4 columns")
+      names(datasets$ref) = c("SampleName", "Marker", "Allele1", "Allele2")
 
-     df = read.table(input$reference$datapath, sep = "\t", header=TRUE)
-     if(ncol(df) != 4)
-       stop("Reference file must have 4 columns")
-     names(df) = c("SampleName", "Marker", "Allele1", "Allele2")
-     df
-   })
+    output$preview_reference<- DT::renderDT({
+      refs = req(datasets$ref) |> prettyRef()
+      datatable(refs, rownames = FALSE,
+                options = list(scrollY = "300px", paging = FALSE, dom = "t"))
+    })
+  })
 
-   output$preview_reference <- DT::renderDT({
-     refs = req(raw2()) |> prettyRef()
-     datatable(refs, rownames = FALSE,
-               options = list(scrollY = "300px", paging = FALSE, dom = "t"))
-   })
+  #Read database file
+  observe({print("input$database")
+    req(input$database)
+    datasets$db <- read.table(input$database$datapath, sep = "\t", header=TRUE)
+    output$preview_database<- DT::renderDT({
+      db = req(datasets$db)
+      datatable(db, rownames = FALSE,
+                options = list(scrollY = "300px", paging = FALSE, dom = "t"))
+    })
+  })
 
-   #Read database file
-   raw3 <- reactive({
-     req(input$database)
-     read.table(input$database$datapath, sep = "\t", header=TRUE)
-   })
-   output$preview_database <- DT::renderDT({
-     db = req(raw3())
-     datatable(db, rownames = FALSE,
-               options = list(scrollY = "300px", paging = FALSE, dom = "t"))
-   })
+  # raw <- reactive({ print("input$mixture")
+  #   req(input$mixture)
+  #   read.table(input$mixture$datapath, sep = "\t", header=TRUE)
+  # })
+  #
+  #  output$preview_mixture <- DT::renderDT({
+  #    mix = req(raw())
+  #    datatable(mix, rownames = FALSE,
+  #              options = list(scrollY = "300px", paging = FALSE, dom = "t"))
+  #    }, label="readMix")
+   # raw2 <- reactive({ print("input$reference")
+   #   req(input$reference)
+   #
+   #   df = read.table(input$reference$datapath, sep = "\t", header=TRUE)
+   #   if(ncol(df) != 4)
+   #     stop("Reference file must have 4 columns")
+   #   names(df) = c("SampleName", "Marker", "Allele1", "Allele2")
+   #   df
+   # }, label="readRef")
+
+   # output$preview_reference <- DT::renderDT({
+   #   refs = req(raw2()) |> prettyRef()
+   #   datatable(refs, rownames = FALSE,
+   #             options = list(scrollY = "300px", paging = FALSE, dom = "t"))
+   # })
 
 
+   # raw3 <- reactive({
+   #   req(input$database)
+   #   read.table(input$database$datapath, sep = "\t", header=TRUE)
+   # }, label="readDB")
+   # output$preview_database <- DT::renderDT({
+   #   db = req(raw3())
+   #   datatable(db, rownames = FALSE,
+   #             options = list(scrollY = "300px", paging = FALSE, dom = "t"))
+   # })
 
-   #Mutations
+  #observeEvent(input$check,{
+  observe({
+    print("Checking marker names")
+    req(datasets$mix, datasets$ref, datasets$db)
+
+    missing_markers <- checkMissingMarkers(mix=datasets$mix, ref=datasets$ref, db=datasets$db)
+
+    if (nrow(missing_markers) > 0) {
+      shinyalert::shinyalert(
+        title = "Missing markers",
+        text = paste(missing_markers$Marker, collapse = "\n"),
+        type = "info"
+      )
+    } else {
+      shinyalert::shinyalert(
+        title = "OK",
+        text = "Data is valid",
+        type = "info"
+      )
+    }
+  })
+
+
+    # Set parameters tab ----------------------------
+
+   #If user chooses stepwise model, allow range to be set
+  #How to let range be greyed out when model is not stepwise?
    observeEvent(input$mutModel, {
      if (input$mutModel == "Stepwise") {
        updateNumericInput(session, "range", value=0.5, min=0, max=1, step=0.01)
@@ -81,77 +146,43 @@ function(input, output, session) {
       }
    })
 
-   create_pedigree <- function(pedigree){
-     if(pedigree=="Paternity"){
-       persons <- c("Mo", "Fa", "Ch")
-       sex <- c("female", "male", "male")
-       ped <- Familias::FamiliasPedigree(id=persons, dadid=c(NA,NA,"Fa"), momid=c(NA,NA,"Mo"), sex=c("female", "male", "male"))
-     #} else if(pedigree=="Non-paternity"){
-     } else {
-       #Define the persons involved in the case
-       persons <- c("Mother", "Father", "Child")
-       sex <- c("female", "male", "male")
-       ped <- Familias::FamiliasPedigree(id=persons, dadid=c(NA,NA,NA), momid=c(NA,NA,"Mother"), sex=c("female", "male", "male"))
-     }
-     ped
-   }
 
 
-   #Contributors
+  # Pedigrees tab -------------------
+
+  pedigrees <- reactiveValues(ped1 = NULL, ped2 = NULL)
+
+   #Create pedigree under H1, give choice of contributors to include in mixture, and plot pedigree
    observeEvent(input$pedigree1, {
     req(input$pedigree1)
-     ped1 <- create_pedigree(input$pedigree1)
+     pedigrees$ped1 <- createPedigree(input$pedigree1)
      #Choices should be updated according to the names of the individuals in the pedigree
-     updateCheckboxGroupInput(session, "cont1", choices=ped1$id)
+     updateCheckboxGroupInput(session, "cont1", choices=pedigrees$ped1$id)
       #The pedtools arguments create warnings
-     output$plot1 <- renderPlot(plot(ped1))#, hatched=ped1$id, title="Pedigree under H1"))
+     output$plot1 <- renderPlot(plot(pedigrees$ped1))#, hatched=ped1$id, title="Pedigree under H1"))
 
      })
+  #Create pedigree under H2, give choice of contributors to include in mixture, and plot pedigree
    observeEvent(input$pedigree2, {
    req(input$pedigree2)
-     ped2 <- create_pedigree(input$pedigree2)
+     pedigrees$ped2 <- createPedigree(input$pedigree2)
      #Choices should be updated according to the names of the individuals in the pedigree
-     updateCheckboxGroupInput(session, "cont2", choices=ped2$id)
+     updateCheckboxGroupInput(session, "cont2", choices=pedigrees$ped2$id)
      #The pedtools arguments create warnings
-     output$plot2 <- renderPlot(plot(ped2))#, hatched=ped2$id,  title="Pedigree under H2"))
+     output$plot2 <- renderPlot(plot(pedigrees$ped2))#, hatched=ped2$id,  title="Pedigree under H2"))
    })
 
-   #Plot pedigrees
-   # Code by Magnus Dehli Vigeland
-   # Function for plotting a list of pedigrees with typed members specified for each
-   plotPeds = function(peds, typed) {
-     npeds <- length(peds)
+  # LR calculations tab --------------------
+   observeEvent(input$LRbut, {
 
-     # Make sure each pedigree is a list of components
-     pedlist <- lapply(peds, function(p) if(pedtools::is.ped(p)) list(p) else p)
+     req(datasets$mix,datasets$ref,datasets$db)
+    req(pedigrees$ped1,pedigrees$ped2)
 
-     # Component-wise plot data
-     plotdat <- lapply(1:npeds, function(i) {
-       pedi <- pedlist[[i]]
-       ty <- typed[[i]]
-       lapply(pedi, function(cmp) list(cmp, carrier = ty))
-     })
-
-     # Remove outer list layer
-     plotdat <- unlist(plotdat, recursive = FALSE)
-
-     # Group comps according to original pedigrees
-     ncomps <- lengths(pedlist)
-     groups <- split(seq_along(plotdat), rep(seq_along(ncomps), ncomps))
-
-     # Titles
-     titles <- paste0("H", 1:npeds)
-
-     # Plot!
-     pedtools::plotPedList(plotdat, frames = TRUE, groups = groups, titles = titles,
-                           ### Further args to consider/tweak:
-                           hatched = pedtools::typedMembers,
-                           cex = 1.2,
-                           cex.main = 1.2,
-                           fmar = 0.02
-     )
-   }
-
-
+    LRvalue <- calculateLR(datasets$mix,datasets$ref,datasets$db, list(pedigrees$ped1,pedigrees$ped2), idxC1=c("Mother","Child"), idxC2=c("Mother","Child"), drop=list("Mother"=0,"Child"=0,dropin=0.05))
+    output$LR <- DT::renderDT({
+      datatable(cbind(Marker=c(datasets$mix$Marker,"Total"),LR=round(c(LRvalue,prod(LRvalue)),2)), rownames = FALSE,
+                options = list(scrollY = "300px", paging = FALSE, dom = "t"))
+    })
+   })
 
 }

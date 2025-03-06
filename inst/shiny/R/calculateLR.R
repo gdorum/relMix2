@@ -1,6 +1,23 @@
 #Convert mixture, reference and database to correct format and perform calculations
 #with relMix()
 
+# db <- read.table(here::here("inst","extdata","frequencies22Markers.txt"), header = TRUE, sep = "\t")
+# mix <- read.table(here::here("inst","extdata","mixture.txt"), header = TRUE, sep = "\t")
+# ref <- read.table(here::here("inst","extdata","references.txt"), header = TRUE, sep = "\t")
+# idxC1 <- c("Mother","Child")
+# idxC2 <- c("Mother","Child")
+# drop <- list("Mother"=0,"Child"=0,dropin=0.05)
+# theta=0
+# mutModel="Equal"
+# femaleMutationRate=0
+# maleMutationRate=0
+# MutationRange=0.5
+
+#pedigrees <- list(createPedigree("Paternity"), createPedigree("Non-paternity"))
+
+#calculateLR(mix, ref, db, pedigrees, idxC1, idxC2, drop, theta, mutModel, femaleMutationRate,
+#                                     maleMutationRate, MutationRange)
+
 #drop is a list of drop-in/dropout values per contributor
 #Default: drop <- list("Mother"=0,"Child"=0,dropin=0.05)
 calculateLR <- function(mix, ref, db, pedigrees, idxC1, idxC2, drop, theta=0, mutModel="Equal", femaleMutationRate=0,

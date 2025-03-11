@@ -1,7 +1,7 @@
 #Plot pedigrees
 # Code by Magnus Dehli Vigeland
 # Function for plotting a list of pedigrees with typed members specified for each
-plotPeds = function(peds, typed) {
+plotPeds = function(peds, typed, title=NULL) {
   npeds <- length(peds)
 
   # Make sure each pedigree is a list of components
@@ -22,10 +22,10 @@ plotPeds = function(peds, typed) {
   groups <- split(seq_along(plotdat), rep(seq_along(ncomps), ncomps))
 
   # Titles
-  titles <- paste0("H", 1:npeds)
+  if(is.null(title)) title <- paste0("H", 1:npeds)
 
   # Plot!
-  pedtools::plotPedList(plotdat, frames = TRUE, groups = groups, titles = titles,
+  pedtools::plotPedList(plotdat, frames = TRUE, groups = groups, titles = title,
                         ### Further args to consider/tweak:
                         hatched = pedtools::typedMembers,
                         cex = 1.2,

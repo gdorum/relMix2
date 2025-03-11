@@ -27,7 +27,8 @@ ui_Database <- fluidPage(
              h4("Database options"),
                    numericInput("theta","Theta",0, min=0, max=1, step=0.01),
                    numericInput("silent","Silent allele frequency",0, min=0, max=1, step=0.01),
-                   numericInput("maf","Minimum allele frequency",0.001, min=0, max=1,step=0.001),
+                   numericInput("maf","Minimum allele frequency",0, min=0, max=1,step=0.001),
+                  uiOutput("options"),
            ),
       ),
       column(3,
@@ -110,9 +111,8 @@ ui_pedigrees <-
       style = "margin-top: 20px"),
     mainPanel(
       h3("Pedigree plots"),
-      #plotOutput("plot1", height = "200px", width = "200px"),
-      #plotOutput("plot2", height = "200px", width = "200px")
-      plotOutput("plot_peds", height = "200px", width = "400px")
+      plotOutput("plot1", height = "200px", width = "200px"),
+      plotOutput("plot2", height = "200px", width = "200px")
     )
   )
 
@@ -153,18 +153,32 @@ ui_LR <- fluidRow(
 # Define UI
 fluidPage(
 
+  fluidRow(
+    column(3,
   titlePanel("relMix2"),
+    ),
+  column(3, align="centre",offset = 3,  style = "width: 150pxmargin-top: 50px",
+         #wellPanel(
+                    actionButton("reset", "Reset All")
+         #)
+  )),
+
+
+  shinyjs::useShinyjs(),  # Initialize shinyjs
 
   tabsetPanel(
     tabPanel("Database",
+             div(id = "dbform",
     ui_Database
-    ),
+    )),
     tabPanel("Import data",
+             div(id = "dataform",
     ui_Data
-    ),
+    )),
     tabPanel("Pedigrees",
+             div(id = "pedform",
              ui_pedigrees
-             ),
+             )),
     tabPanel("LR calculations",
              ui_LR
              )

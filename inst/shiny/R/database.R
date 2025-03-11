@@ -1,115 +1,75 @@
 # Functions for making modifications to the database ----
 
-# mixEx <- read.table(here::here("inst","extdata","mixture.txt"), header = TRUE, sep = "\t")
-# refEx <- read.table(here::here("inst","extdata","references.txt"), header = TRUE, sep = "\t")
-# databaseEx <- read.table(here::here("inst","extdata","frequencies22Markers.txt"), header = TRUE, sep = "\t")
-#
-# rownames(freqs) <- freqs[,1]
-# freqs <- freqs[,-1]
-# dbS <- silent_allele(freqs,0.1)
-# dbS <- unobserved_allele(dbS,mixEx,refEx,0.01)
-
-
-
-#Function that converts database from wide to long format
-wideToLongDatabase <- function(freqs){
-
-  alleleNames <- freqs$Allele
-  rownames(freqs) <- alleleNames
-  freqs <- freqs[,-1]
-  markerNames <- colnames(freqs)
-
-  db <- numeric()
-  for(i in 1:ncol(freqs)){
-    ix <- which(!is.na(freqs[,i]))
-    a <- alleleNames[ix]
-    f <- freqs[ix,i]
-    Marker <- rep(markerNames[i],length(ix))
-    dbNew <- data.frame(Marker,a,f)
-    colnames(dbNew) <- c("Marker","Allele","Frequency")
-    db <- rbind(db,dbNew)
-  }
-  db
-}
-
-
-
 #Add silent allele to database
 silent_allele <- function(freqs,ps){
 
-  if(ps>0) {
-    freqsS <- rbind(freqs,rep(as.numeric(ps),ncol(freqs)))
-    rownames(freqsS) <- c(rownames(freqs),'Silent')
-  } else freqsS <- freqs
+  freqsS <- rbind(freqs[,-1],rep(as.numeric(ps),ncol(freqs)-1))
+  freqsS <- cbind(Allele=c(freqs[,1],'Silent'),freqsS)
   freqsS
+
+  #Scale frequencies to sum to 1
 }
 
 
-#unobserved <- function(db,
-#    shinyalert::shinyalert(paste("Allele",alNotDB, "will be added to marker",markerNames[keepIx], "with frequency",MAF), type = "info")
+
+#mix <- read.table(here::here("inst","extdata","testdata","Unobserved_allele","mixture_unobs.txt"), header = TRUE, sep = "\t")
+#ref <- read.table(here::here("inst","extdata","testdata","Unobserved_allele","references_unobs.txt"), header = TRUE, sep = "\t")
+#db <- read.table(here::here("inst","extdata","frequencies22Markers.txt"), header = TRUE, sep = "\t")
 
 #Add alleles not in database with frequency MAF
 #Checks if any alleles are below MAF (by running MAF_allele)
 #Input: frequencies, mixture and reference profiles in format read in from file
 #and a MAF value
-unobserved_allele <- function(freqs,M,G,MAF){
+unobserved_allele <- function(db,mix,ref,MAF,session){
 
-  alleleNames <- rownames(freqs)
-  markerNames <- colnames(freqs)
+  db <- tidyr::pivot_longer(db,!Allele, names_to="Marker", values_to = "Frequency", values_drop_na = TRUE)
 
-  n <- ncol(M)
-  keepIx <- alNotDB <- numeric()
+  n <- ncol(mix)
+  mIx <- alNotDB <- numeric()
   #Go through each marker in mixture profile to look for alleles not in database
   #Simultaneously checking in reference profile (assumes that markers in reference and
   #mixture are the same)
-  for(i in 1:nrow(M)){
+  for(i in 1:nrow(mix)){
     #Get all database frequencies for the marker
-    mark <- M[i,2]
-    ix <- which(mark==markerNames)
+
+    m <- mix$Marker[i]
+
+    #All alleles in database for given marker
+    al <- dbLong$Allele[dbLong$Marker==m]
+    #Alleles in mixture for given marker
+    am <- mix[i,3:n][!is.na(mix[i,3:n])]
+    #Alleles in reference files
+    ag <- ref[ref$Marker==m,3:4]
+    ag <- ag[!is.na(ag)]
+    aa <- as.character(unique(c(am,ag)))
+    #Check if all alleles in mixture and reference exist in database
+    allele_exist <- c(aa%in%al)
+
     #Check if marker name is the same in mixture file and database, otherwise give error
     #(This has already been checked once the data was imported in)
     #if(length(ix)==0) f_errorWindow(paste("Marker",mark,"not found in database"))
-    al <- alleleNames[!is.na(freqs[,ix])] #All alleles in database for given marker
-    #Alleles in mixture
-    am <- M[i,3:n][!is.na(M[i,3:n])]
-    #Alleles in genotypes
-    ag <- unlist(G[G[,2]==mark,3:4])
-    aa <- as.character(unique(c(am,ag)))
-    #Check if all alleles in mixture and reference exist in database
-    idx <- c(aa%in%al)
+
 
     # if the allele is missing, schedule it to be added to the database,
     # unless it was scheduled already
-    if(any(!idx) && !(aa[!idx] %in% alNotDB)){
+    #if(any(!allele_exist) && !(aa[!allele_exist] %in% alNotDB)){
+    if(any(!allele_exist)) {
       cat(i,"\n")
-      keepIx <- c(keepIx,rep(ix,sum(!idx))) #Index of marker
-      alNotDB <- c(alNotDB,aa[!idx]) #Alleles not found in db
+      mIx <- c(mIx,rep(m,sum(!allele_exist))) #Name of marker
+      alNotDB <- c(alNotDB,aa[!allele_exist]) #Alleles not found in db
     }
   }
 
-  #Change format of database before adding new alleles
-  db <- wideToLongDatabase(freqs)
-
-
   if(length(alNotDB)>0) { #There are alleles not in database
 
-    shinyalert::shinyalert(paste("Allele",alNotDB, "will be added to marker",markerNames[keepIx], "with frequency",MAF), type = "info")
+    shinyalert::shinyalert(paste("Allele",alNotDB, "will be added to marker",mIx, "with frequency",MAF, "and the frequencies will be scaled"), type = "info", session=session)
 
     #Add new allele at the end of database
-    newData <- data.frame(markerNames[keepIx],alNotDB,MAF)
-    colnames(newData) <- c('Marker','Allele','Frequency')
-    db <- data.frame(Marker=c(as.character(db$Marker),as.character(newData$Marker)),
-                     Allele=c(as.character(db$Allele),as.character(newData$Allele)),
-                     Frequency=c(db$Frequency,newData$Frequency))
-    #Check for MAF, scale and sort
-    db <- MAF_allele(db,MAF)
-    # }) #end handler add alleles
-
-  }else{ #No alleles added to database
-    #Check for MAF, scale and sort
-    db <- MAF_allele(db,MAF)
-    db
+    db <- rbind(db,data.frame(Marker=mIx,Allele=alNotDB,Frequency=MAF))
   }
+
+  db
+
 }# end unobserved_allele
 
 #Check if any allele frequencies are below MAF and sets frequency to MAF
@@ -117,62 +77,87 @@ unobserved_allele <- function(freqs,M,G,MAF){
 #Function used by f_unobserved
 MAF_allele <- function(db,MAF){
 
-  if(any(db$Frequency<MAF)){ #Frequencies below MAF
-    shinyalert::shinyalert("Some frequencies are below the min. allele frequency.
-                Change the indicated frequencies?", title="info")
-    if(w) {
-      db$Frequency[db$Frequency<MAF] <- MAF
-    }
-  }
-  #Check if scaling is necessary
-  db <- scale_allele(db)
-  db
+  #keep alleles with NA for all markers
+  dbLong <- tidyr::pivot_longer(db,!Allele, names_to="Marker", values_to = "Frequency", values_drop_na = FALSE, cols_vary="slowest")
+  dbLong <- dbLong[,c("Marker","Allele","Frequency")]
+
+  dbLong$Frequency[!is.na(dbLong$Frequency) & dbLong$Frequency < MAF] <- MAF
+
+  #scale frequencies
+
+  #Convert back to wide format
+  dbWide <- tidyr::pivot_wider(dbLong,names_from="Marker", values_from="Frequency")
+  dbWide
+
 }
 
 
-#Check that all frequencies sum to 1, otherwise scale
-#Sort database and assign final database to environment
-#Function used by f_MAF
-scale_allele <- function(db){
-
-  markerNames <- unique(db[,1])
-
-  #Sort database according to marker, then allele. Silent allele last
-  #First reorder levels of Allele
-  aL <- unique(db[,2])
-  if(any(aL == 'Silent')) {
-    db$Allele <-
-      factor(db$Allele, c(sort(aL[which(!aL == 'Silent')]), 'Silent'))
-  } else {
-    db$Allele <- factor(db$Allele, sort(aL))
-  }
-
-  db <- db[order(db$Marker,db$Allele),]
-
-  #Check that frequencies sum to 1, otherwise scale
-  sums <- sapply(1:length(markerNames),function(i) sum(db[db[,1]==markerNames[i],3]))
-  ix <- which(sums!=1)
-  if(length(ix)>0) {
-
-    #shinyalert::shinyalert("Frequencies do not sum to 1. Do you want to scale? If not, a rest allele will be added.", type="info")
-    #if(w){ #Scale
-      for(m in markerNames[ix]){
-        db[db[,1]==m,3] <- db[db[,1]==m,3]/sum(db[db[,1]==m,3])
-      }
-    # } else{ #Rest allele, or scale if frequencies sum > 1
-    #   for(i in ix){
-    #     if(sums[i]>1) { #Enforce scaling
-    #       db[db[,1]==markerNames[i],3] <- db[db[,1]==markerNames[i],3]/sum(db[db[,1]==markerNames[i],3])
-    #     } else { #Rest allele
-    #       db <- rbind(db,data.frame(Marker=markerNames[i],Allele='r',Frequency=1-sums[i]))
-    #     }
-    #   }
-
-
-    #}
-
-  }
-  db #Final database
-}
-
-
+# #Check that all frequencies sum to 1, otherwise scale
+# #Sort database and assign final database to environment
+# #Function used by f_MAF
+# scale_allele <- function(db){
+#
+#   #db <- tidyr::pivot_longer(db,!Allele, names_to="Marker", values_to = "Frequency", values_drop_na = TRUE)
+#
+#   # Define a tolerance level
+#   tolerance <- 1e-4
+#
+#   # Check if all elements are approximately equal to 1
+#   ix1 <- which((colSums(db[,-1],na.rm=TRUE) - 1) > tolerance) + 1 #Scale
+#   ix2 <- which((1 - colSums(db[,-1],na.rm=TRUE)) >  tolerance) + 1 #Scale or rest allele
+#   if(length(ix1)>0) { #Scale
+#     shinyalert::shinyalert(paste("The sum of the frequencies for", markerNames[ix1], "is larger than 1 and will be scaled."), type="info")
+#     db[,ix1] <- apply(db[,ix1], 2, function(x) x/sum(x, na.rm=TRUE))
+#   }
+#     if(length(ix2)>0)  {
+#     shinyalert::shinyalert(paste("The sum of the frequencies for", markerNames[ix2], "is less than 1. Do you want to scale? If not, a rest allele will be added.", type="input"))
+#     db[,ix2] <- apply(db[,ix2], 2, function(x) x/sum(x, na.rm=TRUE))
+#                            }
+#
+#
+#
+#
+#
+#    markerNames <- unique(db$Marker)
+#
+#   #Sort database according to marker, then allele. Silent allele last
+#   #First reorder levels of Allele
+#   aL <- unique(db$Allele)
+#   if(any(aL == 'Silent')) {
+#     db$Allele <-
+#       factor(db$Allele, c(sort(aL[which(!aL == 'Silent')]), 'Silent'))
+#   } else {
+#     db$Allele <- factor(db$Allele, sort(aL))
+#   }
+#
+#   db <- db[order(db$Marker,db$Allele),]
+#
+#   #Check that frequencies sum to 1, otherwise scale
+#   sums <- sapply(1:length(markerNames),function(i) sum(db[db[,1]==markerNames[i],3]))
+#   ix <- which(sums!=1)
+#   if(length(ix)>0) {
+#
+#     #shinyalert::shinyalert("Frequencies do not sum to 1. Do you want to scale? If not, a rest allele will be added.", type="info")
+#     #if(w){ #Scale
+#       for(m in markerNames[ix]){
+#         db[db[,1]==m,3] <- db[db[,1]==m,3]/sum(db[db[,1]==m,3])
+#       }
+#     # } else{ #Rest allele, or scale if frequencies sum > 1
+#     #   for(i in ix){
+#     #     if(sums[i]>1) { #Enforce scaling
+#     #       db[db[,1]==markerNames[i],3] <- db[db[,1]==markerNames[i],3]/sum(db[db[,1]==markerNames[i],3])
+#     #     } else { #Rest allele
+#     #       db <- rbind(db,data.frame(Marker=markerNames[i],Allele='r',Frequency=1-sums[i]))
+#     #     }
+#     #   }
+#
+#
+#     #}
+#
+#   }
+#   db #Final database
+# }
+#
+# #Put together all changes
+#
+#
